@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ocr_core"
+version = "0.1.0"
+description = "Reusable OCR models & utils for Smart_Kamera_Web"
+authors = [{ name = "Smart_Kamera", email = "agammuhajir1@gmail.com" }]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "pydantic>=2.5,<3.0",
+  "pandas>=2.0,<3.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ocr_core*"]
