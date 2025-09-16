@@ -16,3 +16,4 @@ ocr_core.egg-info/top_level.txt
 tests/test_bbox_utils.py
 tests/test_confidence.py
 tests/test_csv_adapter.py
+tests/test_ocr_runner.py

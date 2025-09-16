@@ -1,0 +1,2 @@
+redis>=5.0
+ocr_core @ file:///${PROJECT_ROOT}/libs/ocr_core

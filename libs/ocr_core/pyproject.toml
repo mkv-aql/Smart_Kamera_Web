@@ -17,3 +17,8 @@ dependencies = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["ocr_core*"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+ocr = ["easyocr>=1.7", "opencv-python-headless>=4.8", "numpy>=1.24", "pandas>=2.0"]
+

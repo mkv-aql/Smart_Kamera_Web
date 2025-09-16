@@ -18,6 +18,11 @@ storage.py         # storage interface + local FS impl
 cd in root of Smart_Kamera_Web
 ```
 pip install -e libs/ocr_core
+
+or
+
+python -m pip install -e libs/ocr_core
+
 ```
 
 Verify import is working

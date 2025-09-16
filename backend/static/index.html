@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Smart_Kamera_Web UI</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <link rel="stylesheet" href="./styles.css"/>
+</head>
+<body>
+<header>
+  <h1>Smart_Kamera_Web</h1>
+  <nav>
+    <button id="refreshImagesBtn" type="button">Refresh Images</button>
+    <a href="/docs" target="_blank" rel="noreferrer">API Docs</a>
+  </nav>
+</header>
+
+<main class="grid">
+  <!-- LEFT -->
+  <section class="panel">
+    <h2>Upload</h2>
+    <form id="uploadForm">
+      <input type="file" id="fileInput" accept="image/*" required />
+      <button id="uploadBtn" type="submit">Upload</button>
+    </form>
+
+    <form id="uploadFolderForm" style="margin-top:8px">
+      <input type="file" id="folderInput" webkitdirectory directory multiple />
+      <button id="uploadFolderBtn" type="submit">Upload Folder</button>
+    </form>
+
+    <h2>Images</h2>
+    <ul id="imageList" class="list"></ul>
+
+    <h2>OCR</h2>
+    <div class="row">
+      <button id="runOcrBtn" type="button" disabled>Run OCR (selected)</button>
+      <span id="jobStatus"></span>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button id="runOcrAllBtn" type="button">Run OCR on ALL</button>
+    </div>
+
+    <h2>Export</h2>
+    <div class="row">
+      <button id="downloadCsvBtn" type="button" disabled>Download CSV (selected)</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button id="downloadAllCsvBtn" type="button">Download ALL CSVs (zip)</button>
+    </div>
+  </section>
+
+  <!-- RIGHT -->
+  <section class="panel">
+    <h2 id="currentFilename">No image selected</h2>
+
+    <div class="opts">
+      <label><input type="checkbox" id="magnifyToggle"> Magnify</label>
+      <label>View:
+        <select id="fitMode">
+          <option value="width">Fit width</option>
+          <option value="contain">Fit whole</option>
+        </select>
+      </label>
+      <label>Lens:
+        <input type="range" id="lensSize" min="120" max="400" step="20" value="200">
+        <span id="lensSizeVal">200</span>px
+      </label>
+      <label>Zoom:
+        <input type="range" id="lensZoom" min="1" max="6" step="0.5" value="2">
+        <span id="lensZoomVal">2.0×</span>
+      </label>
+      <label><input type="checkbox" id="hideRemoved"> Hide removed</label>
+    </div>
+
+    <div id="viewer" class="viewer scroll">
+      <canvas id="imgCanvas"></canvas>
+      <canvas id="lensCanvas" width="200" height="200" class="lens"></canvas>
+    </div>
+
+    <h3>Detected Names</h3>
+    <table id="resultsTable">
+      <thead>
+      <tr>
+        <th>#</th>
+        <th>Name (editable)</th>
+        <th>Confidence</th>
+        <th>Status</th>
+        <th>Remove</th>
+      </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+</main>
+
+<script src="./script.js"></script>
+</body>
+</html>

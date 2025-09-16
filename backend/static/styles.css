@@ -1,0 +1,57 @@
+* { box-sizing: border-box; }
+:root { --pad: 12px; }
+body { margin: 0; font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif; background:#f7f7f7; color:#111; }
+header { display:flex; justify-content:space-between; align-items:center; padding:var(--pad); background:#fff; border-bottom:1px solid #eee; }
+header h1 { margin:0; font-size:18px; }
+header nav { display:flex; gap:10px; align-items:center; }
+header a, button { text-decoration:none; border:1px solid #ddd; background:#fff; padding:6px 10px; border-radius:8px; cursor:pointer; }
+header a:hover, button:hover { background:#f0f0f0; }
+
+.grid { display:grid; grid-template-columns: 320px 1fr; gap: var(--pad); padding: var(--pad); }
+.panel { background:#fff; border:1px solid #eee; border-radius:12px; padding:var(--pad); }
+.row { display:flex; gap:8px; align-items:center; }
+
+.list { list-style:none; margin:0; padding:0; border:1px solid #e5e5e5; border-radius:10px; max-height:280px; overflow:auto; }
+.list li { padding:8px 10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
+.list li:last-child { border-bottom:0; }
+.list li.active { background:#e9f5ff; }
+
+.opts { display:flex; gap:16px; align-items:center; margin-bottom:8px; flex-wrap: wrap; }
+
+.viewer {
+  position: relative;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background: #fff;
+}
+
+/* Fit whole: fixed height; no scroll (image will be contained) */
+.viewer.fit {
+  height: 70vh;
+  overflow: hidden;
+}
+
+/* Fit width: fill width; scroll vertically if tall */
+.viewer.scroll {
+  max-height: calc(100vh - 220px);
+  overflow: auto;
+}
+
+/* Canvas base */
+#imgCanvas { display: block; }
+/* Fit width — stretch to container width */
+.viewer.scroll #imgCanvas { width: 100%; height: auto; }
+/* Fit whole — use pixel size set in JS */
+.viewer.fit #imgCanvas { width: auto; height: auto; margin: 0 auto; }
+
+/* Magnifier lens */
+.lens {
+  position:absolute; top:8px; right:8px;
+  border:1px solid #aaa; border-radius:6px; background:#000;
+  display:none;
+}
+
+table { width:100%; border-collapse:collapse; }
+th, td { padding:6px 8px; border-bottom:1px solid #eee; font-size:14px; }
+td input[type="text"] { width:100%; padding:4px 6px; border:1px solid #ddd; border-radius:6px; }
+.btn { cursor:pointer; }

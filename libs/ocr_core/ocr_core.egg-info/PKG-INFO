@@ -7,6 +7,13 @@ Requires-Python: >=3.10
 Description-Content-Type: text/markdown
 Requires-Dist: pydantic<3.0,>=2.5
 Requires-Dist: pandas<3.0,>=2.0
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0; extra == "dev"
+Provides-Extra: ocr
+Requires-Dist: easyocr>=1.7; extra == "ocr"
+Requires-Dist: opencv-python-headless>=4.8; extra == "ocr"
+Requires-Dist: numpy>=1.24; extra == "ocr"
+Requires-Dist: pandas>=2.0; extra == "ocr"
 
 
 models.py          # Pydantic (or dataclass) types: BBox, OCRItem, etc.
@@ -28,6 +35,11 @@ storage.py         # storage interface + local FS impl
 cd in root of Smart_Kamera_Web
 ```
 pip install -e libs/ocr_core
+
+or
+
+python -m pip install -e libs/ocr_core
+
 ```
 
 Verify import is working

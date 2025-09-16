@@ -2,32 +2,29 @@
 from __future__ import annotations
 from typing import Protocol, Sequence
 
-from .models import OCRItem, BBox
+from .models import OCRItem
 from .confidence import parse as parse_confidence
+
+# Reuse the bbox parser already aware of your CSV/EasyOCR shapes
+from .csv_adapter import _parse_bbox_cell  # local import; not exported
 
 
 class OCRBackend(Protocol):
-    """
-    Minimal interface any OCR engine should implement.
-    """
     def run(self, image_path: str) -> list[OCRItem]:
         ...
 
 
 class EasyOCRBackend:
     """
-    Adapter for your existing EasyOCR-based processor.
-    We'll plug in your class_easyOCR_V1.OCRProcessor here.
+    Adapter around your class_easyOCR_V1.OCRProcessor.
 
     Expected OCRProcessor API:
       - ocr(image_path) -> pandas.DataFrame with columns:
-            'bbox' (quad or xyxy), 'Namen', 'Confidence Level', 'Bildname'
+            'bbox', 'Namen', 'Confidence Level', 'Bildname'
     """
-    def __init__(self, reader_lang: Sequence[str] = ("de", "en"), gpu: bool = False):
-        # Defer import so the package installs without easyocr dependency if unused
-        from importlib import import_module
-        self._module = import_module("class_easyOCR_V1")  # adjust path if moved into libs later
-        self._ocr = self._module.OCRProcessor(lang=reader_lang, gpu=gpu)
+    def __init__(self, language: str = "de", gpu: bool = True, recog_network: str = "latin_g2"):
+        # Lazy import so the package can install without easyocr if unused
+        self._ocr = _load_ocr_processor()(language=language, gpu=gpu, recog_network=recog_network)
 
     def run(self, image_path: str) -> list[OCRItem]:
         import pandas as pd
@@ -38,17 +35,64 @@ class EasyOCRBackend:
 
         items: list[OCRItem] = []
         for _, row in df.iterrows():
-            bbox_val = row.get("bbox")
-            # Reuse CSV parsing logic to normalize bbox quickly:
-            from .csv_adapter import _parse_bbox_cell  # local import to avoid cycles
-            bbox = _parse_bbox_cell(bbox_val)
+            bbox = _parse_bbox_cell(row.get("bbox"))
             if bbox is None:
                 continue
+            name = row.get("Namen")
+            conf = parse_confidence(row.get("Confidence Level"))
             items.append(
                 OCRItem(
                     bbox=bbox,
-                    name=row.get("Namen") if pd.notna(row.get("Namen")) else None,
-                    confidence=parse_confidence(row.get("Confidence Level")),
+                    name=str(name) if pd.notna(name) else None,
+                    confidence=conf,
                 )
             )
         return items
+
+
+# def _load_ocr_processor():
+#     """
+#     Try vendor path first:
+#       ocr_core.vendors.class_easyOCR_V1:OCRProcessor
+#     Fallback to a top-level module named 'class_easyOCR_V1'.
+#     """
+#     from importlib import import_module
+#
+#     # 1) vendor path inside the package
+#     try:
+#         mod = import_module("ocr_core.vendors.class_easyOCR_V1")
+#         return getattr(mod, "OCRProcessor")
+#     except Exception:
+#         pass
+#
+#     # 2) top-level module in the repo
+#     mod = import_module("class_easyOCR_V1")
+#     return getattr(mod, "OCRProcessor")
+
+# Replace the whole _load_ocr_processor() with this:
+def _load_ocr_processor():
+    """
+    Try these in order:
+      1) ocr_core.vendors.class_easyOCR_V1   (if you vendor the file)
+      2) Modules.class_easyOCR_V1            (original desktop layout)
+      3) class_easyOCR_V1                    (file at project root)
+    """
+    from importlib import import_module
+
+    for modname in (
+        "ocr_core.vendors.class_easyOCR_V1",
+        "Modules.class_easyOCR_V1",
+        "class_easyOCR_V1",
+    ):
+        try:
+            mod = import_module(modname)
+            return getattr(mod, "OCRProcessor")
+        except Exception:
+            continue
+
+    # If we get here, nothing worked:
+    raise ImportError(
+        "Could not import OCRProcessor. Tried: "
+        "ocr_core.vendors.class_easyOCR_V1, Modules.class_easyOCR_V1, class_easyOCR_V1"
+    )
+
