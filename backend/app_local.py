@@ -66,8 +66,17 @@ def _save_results(image_id: str, data: dict) -> None:
     _results_path(image_id).write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
 
 def _write_csv_filtered(image_id: str, items: list[dict]) -> None:
-    """Write CSV for active items (exclude status=='removed')."""
+    """
+    Write CSV using the original image filename for both:
+      - CSV file name
+      - 'Bildname' column (via save_csv `bildname`)
+    Excludes status=='removed'.
+    """
     from ocr_core.models import OCRItem, BBox
+
+    img_name = _orig_image_filename(image_id)       # now robust via JSON
+    out_csv  = _csv_path_for(image_id)
+
     active = []
     for it in items:
         if it.get("status") == "removed":
@@ -75,36 +84,87 @@ def _write_csv_filtered(image_id: str, items: list[dict]) -> None:
         b = it["bbox"]
         active.append(
             OCRItem(
-                bbox=BBox(x1=int(round(b["x1"])), y1=int(round(b["y1"])),
-                          x2=int(round(b["x2"])), y2=int(round(b["y2"]))),
+                bbox=BBox(
+                    x1=int(round(b["x1"])), y1=int(round(b["y1"])),
+                    x2=int(round(b["x2"])), y2=int(round(b["y2"]))
+                ),
                 name=it.get("name"),
                 confidence=it.get("confidence"),
-                image_id=image_id,
+                image_id=img_name,  # not strictly used by csv_adapter, but fine
             )
         )
-    save_csv(RESULTS_DIR / f"{image_id}.csv", active, bildname=image_id)
+    save_csv(out_csv, active, bildname=img_name)
+
+
 
 def worker_loop():
+    """
+    Background OCR worker:
+      - waits for jobs from job_q (dict with job_id, image_id)
+      - runs OCR
+      - writes JSON in the UI schema (+ image_filename)
+      - writes CSV named after the original image filename (Bildname = original filename)
+      - updates job_status
+    Stop by enqueueing a sentinel: job_q.put(None)
+    """
+    import json
+    import logging
+
+    log = logging.getLogger("smartkamera.worker")
+
     while True:
         job = job_q.get()
-        if job is None:
+        if job is None:  # graceful shutdown
+            job_q.task_done()
             break
-        job_id = job["job_id"]
-        image_id = job["image_id"]
-        key = image_key_by_id.get(image_id)
+
+        job_id = job.get("job_id")
+        image_id = job.get("image_id")
         try:
             job_status[job_id] = "running"
+
+            # Resolve the stored image path
+            key = image_key_by_id.get(image_id)
+            if not key:
+                raise RuntimeError(f"image_id not found in upload map: {image_id}")
             image_path = storage.get_path(key)
-            items = ocr.run(str(image_path))            # list[OCRItem]
-            json_out = {"items": to_json(items)}        # list[dict]
+
+            # Run OCR (returns list[OCRItem])
+            items = ocr.run(str(image_path))
+
+            # Build UI JSON explicitly and include the original filename
+            img_name = _orig_image_filename(image_id)      # e.g. "10998507.jpg"
+            json_out = _ocritems_to_ui_json(items)         # -> {"items":[...]}
+            json_out["image_filename"] = img_name          # record for later lookups
+
+            # Persist results atomically
             with results_lock:
-                (_results_path(image_id)).write_text(json.dumps(json_out, ensure_ascii=False), encoding="utf-8")
-                save_csv(RESULTS_DIR / f"{image_id}.csv", items, bildname=image_id)
+                # 1) JSON for the UI
+                _results_path(image_id).write_text(
+                    json.dumps(json_out, ensure_ascii=False),
+                    encoding="utf-8"
+                )
+
+                # 2) CSV named after original image file, Bildname set to that filename
+                csv_path = _csv_path_for(image_id)         # results/<original_name>.csv
+                save_csv(csv_path, items, bildname=img_name)
+
             job_status[job_id] = "done"
-        except Exception:
+            try:
+                log.info(f"OCR finished: image_id={image_id} items={len(json_out['items'])} csv={csv_path.name}")
+            except Exception:
+                pass
+
+        except Exception as e:
             job_status[job_id] = "error"
+            try:
+                log.exception(f"OCR job failed: job_id={job_id} image_id={image_id}: {e}")
+            except Exception:
+                pass
+
         finally:
             job_q.task_done()
+
 
 threading.Thread(target=worker_loop, daemon=True).start()
 
@@ -338,10 +398,47 @@ def job_state(job_id: str):
 
 @app.get("/images/{image_id}/results")
 def get_results(image_id: str):
-    p = RESULTS_DIR / f"{image_id}.json"
-    if not p.exists():
+    """
+    Return results JSON; if missing or empty, rebuild from the CSV written by the worker,
+    save the JSON, and return it. This keeps the UI working even if only CSV exists.
+    """
+    p = _results_path(image_id)
+    if p.exists():
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+            if isinstance(data, dict) and isinstance(data.get("items"), list) and data["items"]:
+                return data
+        except Exception:
+            pass  # fall through to rebuild
+
+    # JSON missing or empty -> try reconstruct from CSV (named by original image filename)
+    csv_path = _csv_path_for(image_id)
+    if not csv_path.exists():
+        # Nothing we can do — no JSON and no CSV
         raise HTTPException(404, "no results for this image")
-    return json.loads(p.read_text(encoding="utf-8"))
+
+    # Load CSV and convert to UI JSON
+    from ocr_core.csv_adapter import load_csv
+    ocr_items = load_csv(csv_path)
+
+    data = _ocritems_to_ui_json(ocr_items)
+
+    # NEW: set image_filename from CSV (csv_adapter puts our bildname into OCRItem.image_id)
+    try:
+        first = next(iter(ocr_items))
+        image_filename = getattr(first, "image_id", None) or _orig_image_filename(image_id)
+        if image_filename:
+            data["image_filename"] = image_filename
+    except StopIteration:
+        data["image_filename"] = _orig_image_filename(image_id)
+
+    # Save back the canonical JSON
+    with results_lock:
+        p.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+
+    return data
+
+
 
 @app.post("/images/{image_id}/clean")
 def clean_results(image_id: str):
@@ -360,11 +457,13 @@ def export_csv(image_id: str):
     with results_lock:
         data = _load_results(image_id)
         items = data.get("items", [])
-        _write_csv_filtered(image_id, items)  # uses current JSON (already cleaned if you pressed Clean)
-        p = RESULTS_DIR / f"{image_id}.csv"
+        # Always write CSV (ensures path + Bildname are consistent)
+        _write_csv_filtered(image_id, items)
+        p = _csv_path_for(image_id)
         if not p.exists():
             raise HTTPException(404, "no CSV for this image")
-    return FileResponse(p, media_type="text/csv", filename=f"{image_id}.csv")
+    return FileResponse(p, media_type="text/csv", filename=p.name)
+
 
 @app.get("/exports/results.zip")
 def download_all_csv_zip():
@@ -403,6 +502,68 @@ def remove_result(image_id: str, index: int):
         _save_results(image_id, {"items": items})
         _write_csv_filtered(image_id, items)
     return {"ok": True}
+
+def _orig_image_filename(image_id: str) -> str:
+    """
+    Prefer filename recorded in the results JSON; otherwise fall back to upload map.
+    """
+    # Try JSON first
+    rp = _results_path(image_id)
+    if rp.exists():
+        try:
+            data = json.loads(rp.read_text(encoding="utf-8"))
+            fn = data.get("image_filename")
+            if isinstance(fn, str) and fn.strip():
+                return fn
+        except Exception:
+            pass
+
+    # Fallback: in-memory mapping from upload time
+    key = image_key_by_id.get(image_id)
+    if key and "_" in key:
+        return key.split("_", 1)[1]
+
+    # Last resort (won't be perfect, but prevents crashes)
+    return f"{image_id}.jpg"
+
+
+def _csv_path_for(image_id: str) -> Path:
+    """Use the original image filename but with .csv extension."""
+    img_name = _orig_image_filename(image_id)
+    return RESULTS_DIR / Path(img_name).with_suffix(".csv").name
+
+def _ocritems_to_ui_json(items):
+    """Convert a list of OCRItem (or dicts) into the UI's expected JSON schema."""
+    out = []
+    for it in items:
+        # tolerate both dataclass and dict shapes
+        if isinstance(it, dict):
+            b = it.get("bbox", {})
+            name = it.get("name")
+            conf = it.get("confidence")
+        else:
+            b = getattr(it, "bbox", None)
+            name = getattr(it, "name", None)
+            conf = getattr(it, "confidence", None)
+            if not isinstance(b, dict):
+                b = {
+                    "x1": getattr(b, "x1", None),
+                    "y1": getattr(b, "y1", None),
+                    "x2": getattr(b, "x2", None),
+                    "y2": getattr(b, "y2", None),
+                }
+        out.append({
+            "bbox": {
+                "x1": int(b["x1"]), "y1": int(b["y1"]),
+                "x2": int(b["x2"]), "y2": int(b["y2"]),
+            },
+            "name": name,
+            "confidence": conf,
+            "status": "active",
+        })
+    return {"items": out}
+
+
 
 if __name__ == "__main__":
     import uvicorn
