@@ -55,3 +55,8 @@ table { width:100%; border-collapse:collapse; }
 th, td { padding:6px 8px; border-bottom:1px solid #eee; font-size:14px; }
 td input[type="text"] { width:100%; padding:4px 6px; border:1px solid #ddd; border-radius:6px; }
 .btn { cursor:pointer; }
+
+/* Click-to-remove cursor */
+.viewer.remove-mode #imgCanvas {
+  cursor: crosshair;
+}

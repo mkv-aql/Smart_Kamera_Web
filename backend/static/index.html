@@ -55,23 +55,31 @@
     <h2 id="currentFilename">No image selected</h2>
 
     <div class="opts">
-      <label><input type="checkbox" id="magnifyToggle"> Magnify</label>
-      <label>View:
-        <select id="fitMode">
-          <option value="width">Fit width</option>
-          <option value="contain">Fit whole</option>
-        </select>
-      </label>
-      <label>Lens:
-        <input type="range" id="lensSize" min="120" max="400" step="20" value="200">
-        <span id="lensSizeVal">200</span>px
-      </label>
-      <label>Zoom:
-        <input type="range" id="lensZoom" min="1" max="6" step="0.5" value="2">
-        <span id="lensZoomVal">2.0×</span>
-      </label>
-      <label><input type="checkbox" id="hideRemoved"> Hide removed</label>
-    </div>
+  <label><input type="checkbox" id="magnifyToggle"> Magnify</label>
+  <label>View:
+    <select id="fitMode">
+      <option value="width">Fit width</option>
+      <option value="contain">Fit whole</option>
+    </select>
+  </label>
+  <label>Lens:
+    <input type="range" id="lensSize" min="120" max="400" step="20" value="200">
+    <span id="lensSizeVal">200</span>px
+  </label>
+  <label>Zoom:
+    <input type="range" id="lensZoom" min="1" max="6" step="0.5" value="2">
+    <span id="lensZoomVal">2.0×</span>
+  </label>
+      <!-- Add inside <div class="opts"> ... -->
+<button id="cleanBtn" type="button">Clean results</button>
+
+  <label><input type="checkbox" id="hideRemoved"> Hide removed</label>
+
+  <!-- NEW -->
+  <label><input type="checkbox" id="removeMode"> Click-to-remove</label>
+  <button id="undoRemoveBtn" type="button">Undo remove</button>
+</div>
+
 
     <div id="viewer" class="viewer scroll">
       <canvas id="imgCanvas"></canvas>
