@@ -11,6 +11,15 @@ const API = {
     for (const f of files) fd.append('files', f, f.name);
     return fetch('/images/batch', { method: 'POST', body: fd }).then(r => { if (!r.ok) throw new Error('Batch upload failed'); return r.json(); });
   },
+  deleteImage: (image_id, withResults=true) =>
+    fetch(`/images/${encodeURIComponent(image_id)}?delete_results=${withResults ? 'true' : 'false'}`, { method: 'DELETE' })
+      .then(r => { if (!r.ok) throw new Error('delete failed'); return r.json(); }),
+
+  deleteAllImages: (withResults=false) =>
+    fetch(`/images?delete_results=${withResults ? 'true' : 'false'}`, { method: 'DELETE' })
+      .then(r => { if (!r.ok) throw new Error('bulk delete failed'); return r.json(); }),
+
+
   startOCR: (image_id) => fetch(`/ocr/jobs?image_id=${encodeURIComponent(image_id)}`, { method: 'POST' }).then(r => r.json()),
   startOCRBatch: (ids) => fetch('/ocr/jobs/batch', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ image_ids: ids }) }).then(r => r.json()),
   jobStatus: (job_id) => fetch(`/ocr/jobs/${encodeURIComponent(job_id)}`).then(r => r.json()),
@@ -68,6 +77,8 @@ const els = {
   undoRemoveBtn: document.getElementById('undoRemoveBtn'),
   cleanBtn: document.getElementById('cleanBtn'),
   tableBody: document.querySelector('#resultsTable tbody'),
+  deleteImageBtn: document.getElementById('deleteImageBtn'),
+  deleteAllImagesBtn: document.getElementById('deleteAllImagesBtn'),
 };
 const ctx = els.canvas.getContext('2d');
 const lensCtx = els.lens.getContext('2d');
@@ -366,6 +377,45 @@ els.fitMode.value = 'width';
 els.fitMode.addEventListener('change', (e)=>{ state.fitMode = e.target.value; if (state.current) selectImage(state.current); });
 if (els.hideRemoved) els.hideRemoved.addEventListener('change', draw);
 window.addEventListener('resize', ()=>{ if (state.current) selectImage(state.current); });
+
+//------------------- Delete single and all ----------------------------
+els.deleteImageBtn.addEventListener('click', async () => {
+  if (!state.current) return alert('No image selected.');
+  const withResults = confirm('Also delete OCR results (JSON+CSV) for this image? Click OK = Yes, Cancel = No.');
+  try {
+    await API.deleteImage(state.current.image_id, withResults);
+    // clear viewer if the current was deleted
+    state.current = null;
+    state.results = [];
+    state.img = null;
+    els.canvas.width = els.canvas.height = 0;
+    els.tableBody.innerHTML = '';
+    els.currentFilename.textContent = '(no file selected)';
+    await refreshImages();
+  } catch (e) {
+    alert('Delete failed');
+  }
+});
+
+els.deleteAllImagesBtn.addEventListener('click', async () => {
+  const sure = confirm('Delete ALL images in the folder? (This cannot be undone)');
+  if (!sure) return;
+  const withResults = confirm('Also wipe ALL OCR results (JSON+CSV)? Click OK = Yes, Cancel = No.');
+  try {
+    await API.deleteAllImages(withResults);
+    // reset UI
+    state.current = null;
+    state.results = [];
+    state.img = null;
+    els.canvas.width = els.canvas.height = 0;
+    els.tableBody.innerHTML = '';
+    els.currentFilename.textContent = '(no file selected)';
+    await refreshImages();
+  } catch (e) {
+    alert('Bulk delete failed');
+  }
+});
+
 
 // ------------------- Init -------------------
 refreshImages();
