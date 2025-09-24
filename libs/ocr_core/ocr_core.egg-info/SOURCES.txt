@@ -13,6 +13,7 @@ ocr_core.egg-info/SOURCES.txt
 ocr_core.egg-info/dependency_links.txt
 ocr_core.egg-info/requires.txt
 ocr_core.egg-info/top_level.txt
+ocr_core/vendors/class_easyOCR_V1.py
 tests/test_bbox_utils.py
 tests/test_confidence.py
 tests/test_csv_adapter.py

@@ -1,5 +1,32 @@
-fastapi>=0.111
-uvicorn[standard]>=0.30
-redis>=5.0
-pydantic>=2.5
-ocr_core @ file:///${PROJECT_ROOT}/libs/ocr_core  # optional; or install editable once
+# requirements.txt (project root)
+
+# --- Use CPU wheels of PyTorch by default so it works on any machine ---
+--index-url https://download.pytorch.org/whl/cpu
+--extra-index-url https://pypi.org/simple
+
+# PyTorch (CPU by default)
+torch==2.3.1
+torchvision==0.18.1
+# torchaudio often causes install issues on Windows; skip unless you need it.
+# torchaudio==2.3.1 ; platform_system != "Windows"
+
+# OCR stack
+easyocr==1.7.1
+matplotlib>=3.8
+
+# Web backend
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+watchfiles>=0.21
+
+# Image/data utils
+pillow>=10.0
+opencv-python>=4.8
+numpy>=1.26
+pandas>=2.2
+
+# Your local OCR core library (editable install from repo)
+-e file:libs/ocr_core
+
+ocr_core -e file:../libs/ocr_core  # optional; or install editable once
