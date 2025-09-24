@@ -332,9 +332,9 @@ app = FastAPI(
     redoc_url=None,
 )
 PAGES_ORIGINS = [
-    "https://<your-user>.github.io",
-    "https://<your-user>.github.io/<your-repo>",   # keep both to be safe
-    # "https://your-custom-domain.com",            # add later if you use a custom domain
+    "https://mkv-aql.github.io",
+    "https://mkv-aql.github.io/Smart_Kamera_Web",   # default domain
+    # "https://your-custom-domain.com",            # add custom domain here
 ]
 
 app.add_middleware(
