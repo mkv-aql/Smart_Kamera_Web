@@ -18,6 +18,7 @@ from typing import Dict, List, Optional
 from fastapi import FastAPI, UploadFile, File, HTTPException, Body
 from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from ocr_core.ocr_runner import EasyOCRBackend
@@ -324,7 +325,26 @@ def worker_loop():
 threading.Thread(target=worker_loop, daemon=True).start()
 
 # -------------------------- FastAPI + Static UI --------------------------
-app = FastAPI(title="Smart_Kamera_Web (local)", version="0.3.0")
+# app = FastAPI(title="Smart_Kamera_Web (local)", version="0.3.0")
+app = FastAPI(
+    title="Smart Kamera API",
+    docs_url="/docs",          # Swagger UI at /docs
+    redoc_url=None,
+)
+PAGES_ORIGINS = [
+    "https://<your-user>.github.io",
+    "https://<your-user>.github.io/<your-repo>",   # keep both to be safe
+    # "https://your-custom-domain.com",            # add later if you use a custom domain
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=PAGES_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 STATIC_DIR = Path(__file__).parent / "static"
 STATIC_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/ui", StaticFiles(directory=STATIC_DIR, html=True), name="ui")
