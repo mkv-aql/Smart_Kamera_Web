@@ -27,6 +27,8 @@ numpy>=1.26
 pandas>=2.2
 
 # Your local OCR core library (editable install from repo)
--e file:libs/ocr_core
+# -e file:libs/ocr_core
 
-ocr_core -e file:../libs/ocr_core  # optional; or install editable once
+# ocr_core -e file:../libs/ocr_core  # optional; or install editable once
+
+-e ../libs/ocr_core
