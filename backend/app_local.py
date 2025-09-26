@@ -76,6 +76,22 @@ _rebuild_image_index()
 use_gpu = os.getenv("OCR_GPU", "0") == "1"
 ocr = EasyOCRBackend(language="de", gpu=use_gpu)
 
+# -------------------------- OCR Backend (lazy init) --------------------------
+# _ocr = None
+# _ocr_lock = threading.Lock()
+#
+# def get_ocr():
+#     global _ocr
+#     if _ocr is None:
+#         with _ocr_lock:
+#             if _ocr is None:
+#                 # import here to avoid heavy imports at module load
+#                 from ocr_core.ocr_runner import EasyOCRBackend
+#                 use_gpu = os.getenv("OCR_GPU", "0") == "1"
+#                 _ocr = EasyOCRBackend(language="de", gpu=use_gpu)
+#     return _ocr
+
+
 # -------------------------- JSON/CSV helpers --------------------------
 def _results_path(image_id: str) -> Path:
     return RESULTS_DIR / f"{image_id}.json"
@@ -291,6 +307,7 @@ def worker_loop():
 
             # OCR -> list[OCRItem]
             items = ocr.run(str(image_path))
+            # items = get_ocr().run(str(image_path))
 
             # Build JSON
             img_name = _orig_image_filename(image_id)
@@ -375,6 +392,18 @@ def health():
 @app.on_event("startup")
 def on_startup():
     _rebuild_image_index()
+
+# @app.on_event("startup")
+# def on_startup():
+#     _rebuild_image_index()
+#     # Warm OCR models in the background (non-blocking)
+#     def _warm():
+#         try:
+#             get_ocr()
+#         except Exception:
+#             pass
+#     threading.Thread(target=_warm, daemon=True).start()
+
 
 @app.get("/images")
 def list_images():

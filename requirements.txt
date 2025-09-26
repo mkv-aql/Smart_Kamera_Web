@@ -1,0 +1,43 @@
+--index-url https://download.pytorch.org/whl/cpu
+--extra-index-url https://pypi.org/simple
+
+# Torch (CPU)
+torch==2.3.1
+torchvision==0.18.1
+
+# Core numeric pins (compatible set)
+numpy==1.26.4
+opencv-python-headless==4.8.1.78
+scipy>=1.11,<1.12
+scikit-image>=0.21,<0.25
+
+# OCR stack
+easyocr==1.7.1
+ninja
+pyclipper
+python-bidi
+PyYAML
+Shapely
+
+# Web backend
+fastapi>=0.110
+uvicorn[standard]>=0.29
+h11>=0.14
+click>=8.0
+python-multipart>=0.0.9
+watchfiles>=0.21
+
+# Image/data utils
+pillow>=10.0
+pandas>=2.2
+
+# Plotting
+matplotlib>=3.8
+contourpy>=1.0.1
+cycler>=0.10
+fonttools>=4.22.0
+kiwisolver>=1.3.1
+pyparsing>=2.3.1
+
+# Local package
+-e ./libs/ocr_core
