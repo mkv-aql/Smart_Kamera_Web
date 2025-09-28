@@ -1,6 +1,12 @@
 # Requirements
 + Python 3.11
 
+# Web Documentation
+To see the frontend function
+```
+http://127.0.0.1:8000/docs
+```
+
 # 1 Setup locally for new machine, only do once (windows 10/11) 
 1. Clone GitHub Repo to local
 2. Open CMD, then in CMD:
